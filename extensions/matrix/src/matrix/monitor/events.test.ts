@@ -47,7 +47,8 @@ function createHarness(params?: {
     sendMessage,
     getUserId: vi.fn(async () => params?.selfUserId ?? "@bot:example.org"),
     getJoinedRoomMembers: vi.fn(
-      async (roomId: string) => params?.joinedMembersByRoom?.[roomId] ?? [],
+      async (roomId: string) =>
+        params?.joinedMembersByRoom?.[roomId] ?? ["@bot:example.org", "@alice:example.org"],
     ),
     ...(params?.cryptoAvailable === false
       ? {}
@@ -203,7 +204,7 @@ describe("registerMatrixMonitorEvents verification routing", () => {
     });
   });
 
-  it("does not leak SAS details into unrelated non-DM rooms when flow ids do not match", async () => {
+  it("ignores verification notices in unrelated non-DM rooms", async () => {
     const { sendMessage, roomEventListener } = createHarness({
       joinedMembersByRoom: {
         "!group:example.org": ["@alice:example.org", "@bot:example.org", "@ops:example.org"],
@@ -237,16 +238,8 @@ describe("registerMatrixMonitorEvents verification routing", () => {
     });
 
     await vi.waitFor(() => {
-      expect(sendMessage).toHaveBeenCalledTimes(1);
+      expect(sendMessage).toHaveBeenCalledTimes(0);
     });
-    expect(getSentNoticeBody(sendMessage, 0)).toContain(
-      "Matrix verification started with @alice:example.org.",
-    );
-    expect(
-      (sendMessage.mock.calls as unknown[][]).some((call) =>
-        String((call[1] as { body?: string } | undefined)?.body ?? "").includes("SAS emoji:"),
-      ),
-    ).toBe(false);
   });
 
   it("does not emit duplicate SAS notices for the same verification payload", async () => {

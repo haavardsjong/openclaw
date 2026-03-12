@@ -285,6 +285,17 @@ export function createMatrixVerificationEventRouter(params: {
       const flowId = signal.flowId;
       const sourceEventId = trimMaybeString(event?.event_id);
       const sourceFingerprint = sourceEventId ?? `${senderId}:${event.type}:${flowId ?? "none"}`;
+      const shouldRouteInRoom = await isStrictDirectVerificationRoom({
+        client: params.client,
+        roomId,
+        senderId,
+      });
+      if (!shouldRouteInRoom) {
+        params.logVerboseMessage(
+          `matrix: ignoring verification event outside strict DM room=${roomId} sender=${senderId}`,
+        );
+        return;
+      }
       if (!trackBounded(routedVerificationEvents, sourceFingerprint)) {
         return;
       }

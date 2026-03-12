@@ -67,21 +67,30 @@ export function createDirectRoomTracker(client: MatrixClient, opts: DirectRoomTr
     isDirectMessage: async (params: DirectMessageCheck): Promise<boolean> => {
       const { roomId, senderId } = params;
       await refreshDmCache();
-
-      if (client.dms.isDm(roomId)) {
-        log(`matrix: dm detected via m.direct room=${roomId}`);
-        return true;
-      }
-
       const selfUserId = params.selfUserId ?? (await ensureSelfUserId());
       const joinedMembers = await resolveJoinedMembers(roomId);
-      const normalizedSenderId = senderId?.trim();
+
+      if (client.dms.isDm(roomId)) {
+        const directViaAccountData = Boolean(
+          selfUserId &&
+          senderId?.trim() &&
+          joinedMembers?.length === 2 &&
+          joinedMembers.includes(selfUserId) &&
+          joinedMembers.includes(senderId.trim()),
+        );
+        if (directViaAccountData) {
+          log(`matrix: dm detected via m.direct room=${roomId}`);
+          return true;
+        }
+        log(`matrix: ignoring stale m.direct classification room=${roomId}`);
+      }
+
       if (
         selfUserId &&
-        normalizedSenderId &&
+        senderId?.trim() &&
         joinedMembers?.length === 2 &&
         joinedMembers.includes(selfUserId) &&
-        joinedMembers.includes(normalizedSenderId)
+        joinedMembers.includes(senderId.trim())
       ) {
         log(`matrix: dm detected via exact 2-member room room=${roomId}`);
         return true;

@@ -41,6 +41,21 @@ describe("createDirectRoomTracker", () => {
     ).resolves.toBe(true);
   });
 
+  it("does not trust stale m.direct classifications for shared rooms", async () => {
+    const tracker = createDirectRoomTracker(
+      createMockClient({
+        isDm: true,
+        members: ["@alice:example.org", "@bot:example.org", "@extra:example.org"],
+      }),
+    );
+    await expect(
+      tracker.isDirectMessage({
+        roomId: "!room:example.org",
+        senderId: "@alice:example.org",
+      }),
+    ).resolves.toBe(false);
+  });
+
   it("classifies 2-member rooms as DMs when direct metadata is missing", async () => {
     const client = createMockClient({ isDm: false });
     const tracker = createDirectRoomTracker(client);
