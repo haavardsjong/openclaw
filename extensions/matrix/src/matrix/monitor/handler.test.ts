@@ -3,6 +3,7 @@ import {
   __testing as sessionBindingTesting,
   registerSessionBindingAdapter,
 } from "../../../../../src/infra/outbound/session-binding-service.js";
+import { setMatrixRuntime } from "../../runtime.js";
 import {
   createMatrixHandlerTestHarness,
   createMatrixReactionEvent,
@@ -23,6 +24,23 @@ vi.mock("../send.js", () => ({
 
 beforeEach(() => {
   sessionBindingTesting.resetSessionBindingAdaptersForTests();
+  setMatrixRuntime({
+    channel: {
+      mentions: {
+        matchesMentionPatterns: (text: string, patterns: RegExp[]) =>
+          patterns.some((pattern) => pattern.test(text)),
+      },
+      media: {
+        saveMediaBuffer: vi.fn(),
+      },
+    },
+    config: {
+      loadConfig: () => ({}),
+    },
+    state: {
+      resolveStateDir: () => "/tmp",
+    },
+  } as never);
 });
 
 function createReactionHarness(params?: {
@@ -62,7 +80,7 @@ describe("matrix monitor handler pairing account scope", () => {
       "!room:example.org",
       createMatrixTextMessageEvent({
         eventId: "$event1",
-        body: "hello",
+        body: "@room hello",
         mentions: { room: true },
       }),
     );
@@ -71,7 +89,7 @@ describe("matrix monitor handler pairing account scope", () => {
       "!room:example.org",
       createMatrixTextMessageEvent({
         eventId: "$event2",
-        body: "hello again",
+        body: "@room hello again",
         mentions: { room: true },
       }),
     );
@@ -93,7 +111,7 @@ describe("matrix monitor handler pairing account scope", () => {
       const makeEvent = (id: string): MatrixRawEvent =>
         createMatrixTextMessageEvent({
           eventId: id,
-          body: "hello",
+          body: "@room hello",
           mentions: { room: true },
         });
 
@@ -214,6 +232,26 @@ describe("matrix monitor handler pairing account scope", () => {
     );
   });
 
+  it("drops forged metadata-only mentions before agent routing", async () => {
+    const { handler, recordInboundSession, resolveAgentRoute } = createMatrixHandlerTestHarness({
+      isDirectMessage: false,
+      mentionRegexes: [/@bot/i],
+      getMemberDisplayName: async () => "sender",
+    });
+
+    await handler(
+      "!room:example.org",
+      createMatrixTextMessageEvent({
+        eventId: "$spoofed-mention",
+        body: "hello there",
+        mentions: { user_ids: ["@bot:example.org"] },
+      }),
+    );
+
+    expect(resolveAgentRoute).not.toHaveBeenCalled();
+    expect(recordInboundSession).not.toHaveBeenCalled();
+  });
+
   it("records thread starter context for inbound thread replies", async () => {
     const { handler, finalizeInboundContext, recordInboundSession } =
       createMatrixHandlerTestHarness({
@@ -234,7 +272,7 @@ describe("matrix monitor handler pairing account scope", () => {
       "!room:example.org",
       createMatrixTextMessageEvent({
         eventId: "$reply1",
-        body: "follow up",
+        body: "@room follow up",
         relatesTo: {
           rel_type: "m.thread",
           event_id: "$root",
@@ -301,7 +339,7 @@ describe("matrix monitor handler pairing account scope", () => {
       "!room:example",
       createMatrixTextMessageEvent({
         eventId: "$reply1",
-        body: "follow up",
+        body: "@room follow up",
         relatesTo: {
           rel_type: "m.thread",
           event_id: "$root",

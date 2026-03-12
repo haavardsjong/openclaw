@@ -47,7 +47,7 @@ describe("createMatrixRoomMessageHandler inbound body formatting", () => {
       "!room:example.org",
       createMatrixTextMessageEvent({
         eventId: "$reply1",
-        body: "follow up",
+        body: "@room follow up",
         relatesTo: {
           rel_type: "m.thread",
           event_id: "$thread-root",
