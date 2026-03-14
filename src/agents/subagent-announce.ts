@@ -76,23 +76,23 @@ function buildCompletionDeliveryMessage(params: {
     return "";
   }
   const hasFindings = findingsText.length > 0 && findingsText !== "(no output)";
-  // Error/timeout: keep header so the parent agent knows what went wrong
+  // If there are findings, deliver them directly regardless of outcome status.
+  // The worker produced output — the user should see it without internal prefixes.
+  if (hasFindings) {
+    return findingsText;
+  }
+  // No findings: show error/timeout header so the parent agent knows what happened
   if (params.outcome?.status === "error") {
-    const header =
-      params.spawnMode === "session"
-        ? `❌ Subagent ${params.subagentName} failed this task (session remains active)`
-        : `❌ Subagent ${params.subagentName} failed`;
-    return hasFindings ? `${header}\n\n${findingsText}` : header;
+    return params.spawnMode === "session"
+      ? `❌ Subagent ${params.subagentName} failed this task (session remains active)`
+      : `❌ Subagent ${params.subagentName} failed`;
   }
   if (params.outcome?.status === "timeout") {
-    const header =
-      params.spawnMode === "session"
-        ? `⏱️ Subagent ${params.subagentName} timed out on this task (session remains active)`
-        : `⏱️ Subagent ${params.subagentName} timed out`;
-    return hasFindings ? `${header}\n\n${findingsText}` : header;
+    return params.spawnMode === "session"
+      ? `⏱️ Subagent ${params.subagentName} timed out on this task (session remains active)`
+      : `⏱️ Subagent ${params.subagentName} timed out`;
   }
-  // Success: deliver findings directly — no header prefix
-  return hasFindings ? findingsText : "";
+  return "";
 }
 
 function summarizeDeliveryError(error: unknown): string {
