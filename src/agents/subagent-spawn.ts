@@ -30,6 +30,7 @@ export type SpawnSubagentParams = {
   thinking?: string;
   runTimeoutSeconds?: number;
   thread?: boolean;
+  announce?: boolean;
   mode?: SpawnSubagentMode;
   cleanup?: "delete" | "keep";
   expectsCompletionMessage?: boolean;
@@ -493,6 +494,7 @@ export async function spawnSubagentDirect(
     runTimeoutSeconds,
     expectsCompletionMessage,
     spawnMode,
+    announce: params.announce,
   });
 
   if (hookRunner?.hasHooks("subagent_spawned")) {

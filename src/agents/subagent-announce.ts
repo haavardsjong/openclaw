@@ -76,25 +76,23 @@ function buildCompletionDeliveryMessage(params: {
     return "";
   }
   const hasFindings = findingsText.length > 0 && findingsText !== "(no output)";
-  const header = (() => {
-    if (params.outcome?.status === "error") {
-      return params.spawnMode === "session"
+  // Error/timeout: keep header so the parent agent knows what went wrong
+  if (params.outcome?.status === "error") {
+    const header =
+      params.spawnMode === "session"
         ? `❌ Subagent ${params.subagentName} failed this task (session remains active)`
         : `❌ Subagent ${params.subagentName} failed`;
-    }
-    if (params.outcome?.status === "timeout") {
-      return params.spawnMode === "session"
+    return hasFindings ? `${header}\n\n${findingsText}` : header;
+  }
+  if (params.outcome?.status === "timeout") {
+    const header =
+      params.spawnMode === "session"
         ? `⏱️ Subagent ${params.subagentName} timed out on this task (session remains active)`
         : `⏱️ Subagent ${params.subagentName} timed out`;
-    }
-    return params.spawnMode === "session"
-      ? `✅ Subagent ${params.subagentName} completed this task (session remains active)`
-      : `✅ Subagent ${params.subagentName} finished`;
-  })();
-  if (!hasFindings) {
-    return header;
+    return hasFindings ? `${header}\n\n${findingsText}` : header;
   }
-  return `${header}\n\n${findingsText}`;
+  // Success: deliver findings directly — no header prefix
+  return hasFindings ? findingsText : "";
 }
 
 function summarizeDeliveryError(error: unknown): string {

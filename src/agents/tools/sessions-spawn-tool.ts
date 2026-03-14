@@ -15,6 +15,7 @@ const SessionsSpawnToolSchema = Type.Object({
   // Back-compat: older callers used timeoutSeconds for this tool.
   timeoutSeconds: Type.Optional(Type.Number({ minimum: 0 })),
   thread: Type.Optional(Type.Boolean()),
+  announce: Type.Optional(Type.Boolean()),
   mode: optionalStringEnum(SUBAGENT_SPAWN_MODES),
   cleanup: optionalStringEnum(["delete", "keep"] as const),
 });
@@ -60,6 +61,7 @@ export function createSessionsSpawnTool(opts?: {
           ? Math.max(0, Math.floor(timeoutSecondsCandidate))
           : undefined;
       const thread = params.thread === true;
+      const announce = params.announce !== false; // default true
 
       const result = await spawnSubagentDirect(
         {
@@ -70,6 +72,7 @@ export function createSessionsSpawnTool(opts?: {
           thinking: thinkingOverrideRaw,
           runTimeoutSeconds,
           thread,
+          announce,
           mode,
           cleanup,
           expectsCompletionMessage: true,

@@ -314,6 +314,11 @@ function startSubagentAnnounceCleanupFlow(runId: string, entry: SubagentRunRecor
   if (!beginSubagentCleanup(runId)) {
     return false;
   }
+  // Skip announce entirely when caller passed announce: false
+  if (entry.suppressAnnounce) {
+    void finalizeSubagentCleanup(runId, entry.cleanup, false);
+    return true;
+  }
   const requesterOrigin = normalizeDeliveryContext(entry.requesterOrigin);
   void runSubagentAnnounceFlow({
     childSessionKey: entry.childSessionKey,
@@ -828,6 +833,7 @@ export function registerSubagentRun(params: {
   runTimeoutSeconds?: number;
   expectsCompletionMessage?: boolean;
   spawnMode?: "run" | "session";
+  announce?: boolean;
 }) {
   const now = Date.now();
   const cfg = loadConfig();
@@ -847,6 +853,7 @@ export function registerSubagentRun(params: {
     task: params.task,
     cleanup: params.cleanup,
     expectsCompletionMessage: params.expectsCompletionMessage,
+    suppressAnnounce: params.announce === false,
     spawnMode,
     label: params.label,
     model: params.model,

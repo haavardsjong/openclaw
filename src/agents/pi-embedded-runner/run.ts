@@ -1114,6 +1114,63 @@ export async function runEmbeddedPiAgent(
             };
           }
 
+          // NORA: If sessions_spawn was used, schedule a follow-up run
+          // as a separate lane task. Current task returns the ack payloads.
+          // The follow-up waits for the sub-agent, then runs a new attempt
+          // that sees the System Message and generates the final response.
+          const spawnedSubagent = attempt.toolMetas?.some(
+            (t: { toolName: string }) => t.toolName === "sessions_spawn",
+          );
+          if (spawnedSubagent && !aborted && params.sessionFile) {
+            const followUpSessionFile = params.sessionFile;
+            // Schedule follow-up OUTSIDE the current lane task
+            setTimeout(async () => {
+              try {
+                // Wait for sub-agent to complete (poll session JSONL)
+                const maxWaitMs = 30_000;
+                const pollMs = 250;
+                const waitStart = Date.now();
+                log.debug(`[subagent-followup] Waiting for sub-agent result`);
+                let completed = false;
+                while (Date.now() - waitStart < maxWaitMs) {
+                  await new Promise((r) => setTimeout(r, pollMs));
+                  try {
+                    const content = await fs.readFile(followUpSessionFile, "utf8");
+                    if (content.includes("just completed")) {
+                      log.debug(
+                        `[subagent-followup] Sub-agent completed after ${Date.now() - waitStart}ms`,
+                      );
+                      completed = true;
+                      break;
+                    }
+                  } catch {}
+                }
+                if (!completed) {
+                  log.debug(`[subagent-followup] Timeout waiting for sub-agent`);
+                  return;
+                }
+                // Run a follow-up turn — new lane task, new attempt
+                const followUpResult = await runEmbeddedPiAgent({
+                  ...params,
+                  prompt: "", // No new user message — System Message is in session
+                });
+                // Deliver follow-up payloads via the runtime's delivery mechanism
+                if (followUpResult.payloads?.length) {
+                  for (const p of followUpResult.payloads) {
+                    if (p.text) {
+                      log.debug(`[subagent-followup] Delivering: ${p.text.slice(0, 60)}...`);
+                      // The delivery is handled by the caller (middleware stdout capture)
+                      // We need to write to stdout directly since the original caller already returned
+                      process.stdout.write(p.text + "\n");
+                    }
+                  }
+                }
+              } catch (err) {
+                log.debug(`[subagent-followup] Error: ${String(err)}`);
+              }
+            }, 100); // Small delay to let current task release the lane
+          }
+
           log.debug(
             `embedded run done: runId=${params.runId} sessionId=${params.sessionId} durationMs=${Date.now() - started} aborted=${aborted}`,
           );
