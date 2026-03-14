@@ -24,7 +24,7 @@ function buildSkillsSection(params: { skillsPrompt?: string; readToolName: strin
   }
   return [
     "## Skills (mandatory)",
-    "Before replying: scan <available_skills> <description> entries.",
+    // "Before replying: scan <available_skills> <description> entries.", // NORA: removed — no skills used
     `- If exactly one skill clearly applies: read its SKILL.md at <location> with \`${params.readToolName}\`, then follow it.`,
     "- If multiple could apply: choose the most specific one, then read/follow it.",
     "- If none clearly apply: do not read any SKILL.md.",
@@ -105,16 +105,8 @@ function buildReplyTagsSection(isMinimal: boolean) {
   if (isMinimal) {
     return [];
   }
-  return [
-    "## Reply Tags",
-    "To request a native reply/quote on supported surfaces, include one tag in your reply:",
-    "- Reply tags must be the very first token in the message (no leading text/newlines): [[reply_to_current]] your reply.",
-    "- [[reply_to_current]] replies to the triggering message.",
-    "- Prefer [[reply_to_current]]. Use [[reply_to:<id>]] only when an id was explicitly provided (e.g. by the user or a tool).",
-    "Whitespace inside the tag is allowed (e.g. [[ reply_to_current ]] / [[ reply_to: 123 ]]).",
-    "Tags are stripped before sending; support depends on the current channel config.",
-    "",
-  ];
+  // NORA: removed Reply Tags section — we use send-message.js --reply-to instead
+  return [];
 }
 
 function buildMessagingSection(params: {
@@ -134,7 +126,7 @@ function buildMessagingSection(params: {
     "- Cross-session messaging → use sessions_send(sessionKey, message)",
     "- Sub-agent orchestration → use subagents(action=list|steer|kill)",
     `- Runtime-generated completion events may ask for a user update. Rewrite those in your normal assistant voice and send the update (do not forward raw internal metadata or default to ${SILENT_REPLY_TOKEN}).`,
-    "- Never use exec/curl for provider messaging; OpenClaw handles all routing internally.",
+    // NORA: removed "never use exec for messaging" — we use exec for all script-based messaging
     params.availableTools.has("message")
       ? [
           "",
@@ -447,7 +439,7 @@ export function buildAgentSystemPrompt(params: {
         ].join("\n"),
     "TOOLS.md does not control tool availability; it is user guidance for how to use external tools.",
     `For long waits, avoid rapid poll loops: use ${execToolName} with enough yieldMs or ${processToolName}(action=poll, timeout=<ms>).`,
-    "If a task is more complex or takes longer, spawn a sub-agent. Completion is push-based: it will auto-announce when done.",
+    // NORA: removed sub-agent spawn instruction — we use delegate.js
     ...(acpHarnessSpawnAllowed
       ? [
           'For requests like "do this in codex/claude code/gemini", treat it as ACP harness intent and call `sessions_spawn` with `runtime: "acp"`.',
@@ -469,14 +461,7 @@ export function buildAgentSystemPrompt(params: {
     "When approvals are required, preserve and show the full command/script exactly as provided (including chained operators like &&, ||, |, ;, or multiline shells) so the user can approve what will actually run.",
     "",
     ...safetySection,
-    "## OpenClaw CLI Quick Reference",
-    "OpenClaw is controlled via subcommands. Do not invent commands.",
-    "To manage the Gateway daemon service (start/stop/restart):",
-    "- openclaw gateway status",
-    "- openclaw gateway start",
-    "- openclaw gateway stop",
-    "- openclaw gateway restart",
-    "If unsure, ask the user to run `openclaw help` (or `openclaw gateway --help`) and paste the output.",
+    // NORA: removed OpenClaw CLI Quick Reference — agents don't manage the gateway
     "",
     ...skillsSection,
     ...memorySection,

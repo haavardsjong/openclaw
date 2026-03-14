@@ -1452,7 +1452,7 @@ export async function runEmbeddedAttempt(
     const workspaceNotes = hookAdjustedBootstrapFiles.some(
       (file) => file.name === DEFAULT_BOOTSTRAP_FILENAME && !file.missing,
     )
-      ? ["Reminder: commit your changes in this workspace after edits."]
+      ? undefined // NORA: removed workspace commit reminder
       : undefined;
 
     const agentDir = params.agentDir ?? resolveOpenClawAgentDir();
